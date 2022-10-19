@@ -1,4 +1,4 @@
-package com.sparta.post03.exception;
+package com.sparta.post03.exception.MemberException;
 
 import lombok.Getter;
 

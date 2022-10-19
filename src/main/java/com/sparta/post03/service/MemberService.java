@@ -8,10 +8,11 @@ import com.sparta.post03.dto.request.MemberRequestDto;
 import com.sparta.post03.dto.response.MemberResponseDto;
 import com.sparta.post03.entity.RefreshToken;
 import com.sparta.post03.entity.Member;
-import com.sparta.post03.exception.DuplicateMemberException;
-import com.sparta.post03.exception.ErrorCode;
+import com.sparta.post03.exception.MemberException.BadPasswordException;
+import com.sparta.post03.exception.MemberException.DuplicateMemberException;
 import com.sparta.post03.exception.ErrorResponse;
-import com.sparta.post03.exception.passwordConfirmException;
+import com.sparta.post03.exception.MemberException.MemberNotFoundException;
+import com.sparta.post03.exception.MemberException.passwordConfirmException;
 import com.sparta.post03.jwt.provider.JwtProvider;
 import com.sparta.post03.repository.RefreshTokenRopository;
 import com.sparta.post03.repository.MemberRepository;
@@ -39,7 +40,7 @@ public class MemberService {
 
     private final JwtProvider jwtProvider;
 
-    //가입한 회원인지 아닌지 유효성 검사해주는 method
+    //가입한 회원인지 아닌지 유효성 검사 해주는 method
     public Member isPresentMember(String username){
         Optional<Member> optionalMember = memberRepository.findByUsername(username);
         return optionalMember.orElse(null);
@@ -74,11 +75,18 @@ public class MemberService {
     //로그인
     public ResponseEntity<?> login(LoginRequestDto loginRequestDto, HttpServletResponse httpServletResponse) {
         Member member = isPresentMember(loginRequestDto.getUsername());
+
+        // 사용자가 있는지 여부
         if(null == member){
-            return ErrorResponse.fail("MEMBER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
+                throw new MemberNotFoundException();
+
+//            return ErrorResponse.fail("MEMBER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
         }
+
+        // 비밀번호가 맞는지 여부
         if(!member.validatePassword(passwordEncoder, loginRequestDto.getPassword())){
-            return ErrorResponse.fail("INVALID_MEMBER", "사용자를 찾을수 없습니다.");
+            throw new BadPasswordException();
+//            return ErrorResponse.fail("INVALID_MEMBER", "사용자를 찾을수 없습니다.");
         }
 
 

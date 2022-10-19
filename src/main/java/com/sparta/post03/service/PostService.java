@@ -2,6 +2,8 @@ package com.sparta.post03.service;
 
 import com.sparta.post03.dto.request.PostRequestDto;
 import com.sparta.post03.dto.response.PostAllResponseDto;
+import com.sparta.post03.exception.MemberException.PostIdNotFoundException;
+import com.sparta.post03.exception.PostException.*;
 import com.sparta.post03.repository.PostRepository;
 import com.sparta.post03.dto.response.PostResponseDto;
 import com.sparta.post03.dto.response.ResponseDto;
@@ -10,11 +12,11 @@ import com.sparta.post03.entity.Post;
 import com.sparta.post03.jwt.provider.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -48,24 +50,28 @@ public class PostService {
         return post.getImageUrl();
     }
 
-    public ResponseDto<?> createPost(PostRequestDto postRequestDto, HttpServletRequest request) {
-        if(null == request.getHeader("Refresh-Token")){
-            return ResponseDto.fail("MEMBER_NOT_FOUND",
-                    "로그인이 필요합니다.");
-        }
+    public ResponseEntity<?> createPost(PostRequestDto postRequestDto, HttpServletRequest request) {
         if(null == request.getHeader("Authorization")){
-            return ResponseDto.fail("MEMBER_NOT_FOUND",
-                    "로그인이 필요합니다.");
+            throw new AccessTokenNotFoundException();
+        }
+        if(null == request.getHeader("Refresh-Token")){  //토큰값이 유효하지 않습니다.
+            throw  new RefreshTokenNotFoundException();
         }
         Member member = validateMember(request);
+
+        //토큰 값 확인
         if(null == member){
-            return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
+            throw new TokenInvalidException();
         }
+
+        //제목 값 확인
         if(postRequestDto.getTitle()==null){
-            return ResponseDto.fail("TITLE_EMPTY", "제목 칸이 비어있습니다.");
+            throw new TitleNotFoundException();
         }
+
+        // 게시글 값 확인
         if(postRequestDto.getContent()==null){
-            return ResponseDto.fail("CONTENT_EMPTY", "작성된 글이 없습니다.");
+            throw new ContentNotFoundException();
         }
         Post post = Post.builder()
                 .title(postRequestDto.getTitle())
@@ -74,7 +80,7 @@ public class PostService {
                 .member(member)
                 .build();
         postRepository.save(post);
-        return ResponseDto.success(
+        return ResponseEntity.ok().body(ResponseDto.success(
                 PostResponseDto.builder()
                         .id(post.getId())
                         .title(post.getTitle())
@@ -84,11 +90,11 @@ public class PostService {
                         .modifiedAt(post.getModifiedAt())
                         .imageUrl(post.getImageUrl())
                         .build()
-        );
+        ));
     }
     //게시글 전체 조회
     @Transactional(readOnly = true)
-    public ResponseDto<?> getAllPosts() {
+    public ResponseEntity<?> getAllPosts() {
         List<PostAllResponseDto> postAllList = new ArrayList<>();
         List<Post> postList = postRepository.findAllByOrderByModifiedAtDesc();
         for(Post post: postList){
@@ -105,18 +111,18 @@ public class PostService {
                             .build()
             );
         }
-        return ResponseDto.success(postAllList);
+        return ResponseEntity.ok().body(ResponseDto.success(postAllList));
     }
 
     //게시글 아이디로 조회
     @Transactional(readOnly = true)
-    public ResponseDto<?> getPost(Long id) {
+    public ResponseEntity<?> getPost(Long id) {
         Post post = isPresentPost(id);
         if(null == post){
-            return ResponseDto.fail("NOT_FOUND", "존재하지 않는 게시글 ID 입니다.");
+            throw new PostIdNotFoundException();
         }
         String url = getImageUrlByPost(post);
-        return ResponseDto.success(
+        return ResponseEntity.ok().body(ResponseDto.success(
                 PostResponseDto.builder()
                         .id(post.getId())
                         .title(post.getTitle())
@@ -125,39 +131,36 @@ public class PostService {
                         .createdAt(post.getCreatedAt())
                         .modifiedAt(post.getModifiedAt())
                         .imageUrl(url)
-                        .build()
+                        .build())
         );
     }
 
     //게시글 수정
     @Transactional
-    public ResponseDto<?> updatePost(Long id, PostRequestDto postRequestDto, HttpServletRequest request) {
-        if(null == request.getHeader("Refresh-Token")){
-            return ResponseDto.fail("MEMBER_NOT_FOUND",
-                    "로그인이 필요합니다.");
-        }
-
+    public ResponseEntity<?> updatePost(Long id, PostRequestDto postRequestDto, HttpServletRequest request) {
         if(null == request.getHeader("Authorization")){
-            return ResponseDto.fail("MEMBER_NOT_FOUND",
-                    "로그인이 필요합니다.");
+            throw new AccessTokenNotFoundException();
+        }
+        if(null == request.getHeader("Refresh-Token")){
+            throw  new RefreshTokenNotFoundException();
         }
 
         Member member = validateMember(request);
         if(null == member){
-            return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
+            throw new TokenInvalidException();
         }
 
         Post post = isPresentPost(id);
         if(null == post){
-            return ResponseDto.fail("NOT_FOUND", "존재하지 않는 게시글 id 입니다.");
+            throw new PostIdNotFoundException();
         }
 
-        if(!post.validateMember(member)){
-          return ResponseDto.fail("BAD_REQUEST", "작성자만 수정할 수 있습니다.");
-       }
+//        if(!post.validateMember(member)){
+//          return ResponseDto.fail("BAD_REQUEST", "작성자만 수정할 수 있습니다.");
+//       }
         post.update(postRequestDto);
         postRepository.save(post);
-        return ResponseDto.success(
+        return ResponseEntity.ok().body(ResponseDto.success(
                 PostResponseDto.builder()
                         .id(post.getId())
                         .title(post.getTitle())
@@ -166,33 +169,31 @@ public class PostService {
                         .createdAt(post.getCreatedAt())
                         .modifiedAt(post.getModifiedAt())
                         .imageUrl(post.getImageUrl())
-                        .build()
+                        .build())
         );
     }
 
     //게시글 삭제
     @Transactional
-    public ResponseDto<?> deletePost(Long id, HttpServletRequest request) {
-        if (null == request.getHeader("Refresh-Token")) {
-            return ResponseDto.fail("MEMBER_NOT_FOUND",
-                    "로그인이 필요합니다.");
-        }
+    public ResponseEntity<?> deletePost(Long id, HttpServletRequest request) {
         if (null == request.getHeader("Authorization")) {
-            return ResponseDto.fail("MEMBER_NOT_FOUND",
-                    "로그인이 필요합니다.");
+            throw new AccessTokenNotFoundException();
+        }
+        if (null == request.getHeader("Refresh-Token")) {
+            throw  new RefreshTokenNotFoundException();
         }
         Member member = validateMember(request);
         if (null == member) {
-            return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
+            throw new TokenInvalidException();
         }
         Post post = isPresentPost(id);
         if (null == post) {
-            return ResponseDto.fail("NOT_FOUND", "존재하지 않는 게시글 id 입니다.");
+            throw new PostIdNotFoundException();
         }
-        if (!post.validateMember(member)) {
-            return ResponseDto.fail("BAD_REQUEST", "작성자만 삭제할 수 있습니다.");
-       }
+//        if (!post.validateMember(member)) {
+//            return ResponseDto.fail("BAD_REQUEST", "작성자만 삭제할 수 있습니다.");
+//       }
         postRepository.delete(post);
-        return ResponseDto.success("delete success");
+        return ResponseEntity.ok().body(ResponseDto.success("delete success"));
     }
 }
