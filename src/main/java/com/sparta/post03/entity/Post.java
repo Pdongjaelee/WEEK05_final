@@ -9,9 +9,6 @@ import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import static javax.persistence.FetchType.LAZY;
 
 @Builder
@@ -45,11 +42,5 @@ public class Post extends Timestamped{
     public boolean validateMember(Member member){
 
         return !this.member.equals(member);
-    }
-    @OneToMany(fetch = LAZY, mappedBy ="post", cascade = CascadeType.ALL)
-    private List<PostLike> heartList = new ArrayList<>();
-
-    public void discountLike(PostLike heart){
-        this.heartList.remove(heart);
     }
 }

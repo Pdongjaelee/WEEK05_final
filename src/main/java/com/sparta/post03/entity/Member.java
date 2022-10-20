@@ -8,12 +8,10 @@ import lombok.NoArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import javax.persistence.*;
-import java.util.List;
 
 @Builder
 @Entity
 @Getter
-@Table(name = "user")
 @NoArgsConstructor
 @AllArgsConstructor
 public class Member extends Timestamped{
@@ -29,15 +27,8 @@ public class Member extends Timestamped{
     @Column(nullable = false)
     private String password;
 
-    public boolean validatePassword(PasswordEncoder passwordEncoder, String password) {
+    public boolean validatePassword(PasswordEncoder passwordEncoder, String password){
         return passwordEncoder.matches(password, this.password);
-
-     }
-    @OneToMany(
-            mappedBy = "member",
-            cascade = CascadeType.ALL,  //member가 삭제될 떄 Heart 엔티티도 같이 삭제
-            orphanRemoval = true,
-            fetch = FetchType.LAZY)
-    private List<PostLike> hearts;
+    }
 }
 
