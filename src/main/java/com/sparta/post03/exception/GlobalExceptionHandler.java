@@ -15,7 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 
-    //중복id
+    //중복 id 확인
     @ExceptionHandler(DuplicateMemberException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateMemberException(Exception e) {
         ErrorResponse errorResponse = ErrorResponse.of(ErrorCode.DUPLICATE_MEMBER_ID, ErrorCode.DUPLICATE_MEMBER_ID.getMessage(), ErrorCode.DUPLICATE_MEMBER_ID.getDetail());
@@ -23,7 +23,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
 
-    // password 일치확인
+    // password 일치확인ㅊ
     @ExceptionHandler(passwordConfirmException.class)
     public ResponseEntity<ErrorResponse> handlePasswordConfirmException(Exception e) {
         ErrorResponse errorResponse = ErrorResponse.of(ErrorCode.BAD_PASSWORD_CONFIRM, ErrorCode.DUPLICATE_MEMBER_ID.getMessage(), ErrorCode.BAD_PASSWORD_CONFIRM.getDetail());
